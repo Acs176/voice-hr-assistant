@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     stt_model: str = "nova-3"
     stt_language: str = "multi"
-    tts_model: str = "eleven_flash_v2_5"
+    tts_model: str = "eleven_multilingual_v2"
 
     sessions_dir: Path = Path("sessions")
 

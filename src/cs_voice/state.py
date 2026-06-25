@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from cs_voice.parsing import spell_out
+
 IssueCategory = Literal["scheduling", "payroll", "onboarding", "documents", "other"]
 Urgency = Literal["low", "medium", "high"]
 SlotStatus = Literal["empty", "candidate", "confirmed", "failed"]
@@ -35,9 +37,13 @@ class SessionState(BaseModel):
         )
 
     def snapshot(self) -> str:
+        emp = self.employee_id.model_dump(exclude_none=True)
+        spoken_source = self.employee_id.value or self.employee_id.candidate
+        if spoken_source:
+            emp["spoken_form"] = spell_out(spoken_source)
         return json.dumps(
             {
-                "employee_id": self.employee_id.model_dump(exclude_none=True),
+                "employee_id": emp,
                 "issue_category": self.issue_category.model_dump(exclude_none=True),
                 "description": self.description.model_dump(exclude_none=True),
                 "urgency": self.urgency.model_dump(exclude_none=True),

@@ -25,6 +25,7 @@ packages = ["src/cs_voice"]
 dev = [
     "mypy~=1.0",
     "pytest~=8.0",
+    "pytest-asyncio~=0.24",
     "ruff~=0.8",
 ]
 
@@ -39,6 +40,7 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+asyncio_mode = "auto"
 
 [tool.mypy]
 files = ["src/cs_voice"]
