@@ -10,22 +10,43 @@ Voice support agent for Orbio (HR platform).
 - **OpenAI gpt-4o-mini** — LLM
 - **Silero VAD** + LiveKit multilingual turn detector
 
+## Layout
+
+```
+src/cs_voice/
+  main.py         entrypoint, wires plugins + session
+  agent.py        SupportAgent + slot-recording tools
+  state.py        Slot, SessionState, enums
+  parsing.py      deterministic value parsers
+  persistence.py  per-session JSON sink
+  config.py       typed settings (pydantic-settings)
+  prompts/        markdown prompts + loader
+tests/            pytest, unit tests against pure modules
+sessions/         gitignored runtime dumps
+```
+
 ## Setup
 
 ```bash
-uv sync
+make install
 cp .env.example .env   # fill in keys
-uv run python agent.py download-files   # one-time: pulls VAD + turn-detector weights
+uv run cs-voice download-files   # one-time: VAD + turn-detector weights
 ```
 
-Get a LiveKit Cloud project (free tier is fine), grab URL/key/secret. API keys from OpenAI, Deepgram, ElevenLabs.
+Get a LiveKit Cloud project, grab URL/key/secret. API keys from OpenAI, Deepgram, ElevenLabs.
 
 ## Run
 
-Dev mode (hot reload, talks to a LiveKit room):
-
 ```bash
-uv run python agent.py dev
+make run
 ```
 
 Then open the [LiveKit Agents Playground](https://agents-playground.livekit.io), connect to your project, and talk to it.
+
+## Develop
+
+```bash
+make test     # pytest
+make lint     # ruff + mypy
+make format   # ruff format + autofix
+```
