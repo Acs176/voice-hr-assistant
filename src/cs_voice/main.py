@@ -28,9 +28,10 @@ def _build_session(settings: Settings) -> AgentSession[None]:
             numerals=True,
         ),
         llm=openai.LLM(model=settings.llm_model),
-        tts=elevenlabs.TTS(model=settings.tts_model),
+        tts=elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
+        preemptive_generation=True,
     )
 
 
@@ -58,9 +59,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         fut.add_done_callback(pending.discard)
 
     await session.start(agent=agent, room=ctx.room, room_input_options=RoomInputOptions())
-    await session.generate_reply(
-        instructions="Greet the caller as Mar from Orbio support, and ask how you can help today."
-    )
+    await session.say("Hi, this is Mar from Orbio support. How can I help you today?")
 
 
 def main() -> None:

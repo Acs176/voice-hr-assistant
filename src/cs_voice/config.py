@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     stt_model: str = "nova-3"
     stt_language: str = "multi"
     tts_model: str = "eleven_multilingual_v2"
+    tts_voice_id: str = "EXAVITQu4vr4xnSDxMaL"  # ElevenLabs "Sarah" — multilingual, warm
 
     sessions_dir: Path = Path("sessions")
 
