@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     openai_api_key: str
     deepgram_api_key: str
     eleven_api_key: str
+    cartesia_api_key: str  # TTS fallback
+    google_api_key: str  # LLM fallback
 
     llm_model: str = "gpt-5.4-mini"
     stt_model: str = "nova-3"

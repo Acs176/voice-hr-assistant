@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Voice support agent for Orbio"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents[deepgram,elevenlabs,openai,silero]~=1.6",
+    "livekit-agents[cartesia,deepgram,elevenlabs,google,openai,silero]~=1.6",
     "pydantic~=2.0",
     "pydantic-settings~=2.0",
     "python-dotenv~=1.0",

@@ -15,8 +15,11 @@ from livekit.agents import (
     BuiltinAudioClip,
     RoomInputOptions,
     inference,
+    llm,
+    stt,
+    tts,
 )
-from livekit.plugins import deepgram, elevenlabs, openai, silero
+from livekit.plugins import cartesia, deepgram, elevenlabs, google, openai, silero
 
 from cs_voice import rag
 from cs_voice.agent import SupportAgent
@@ -29,13 +32,22 @@ load_dotenv()
 
 def _build_session(settings: Settings) -> AgentSession[None]:
     return AgentSession(
-        stt=deepgram.STT(
-            model=settings.stt_model,
-            language=settings.stt_language,
-            numerals=True,
-        ),
-        llm=openai.LLM(model=settings.llm_model),
-        tts=elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id),
+        stt=stt.FallbackAdapter([
+            deepgram.STT(
+                model=settings.stt_model,
+                language=settings.stt_language,
+                numerals=True,
+            ),
+            openai.STT(),  # Whisper fallback
+        ]),
+        llm=llm.FallbackAdapter([
+            openai.LLM(model=settings.llm_model),
+            google.LLM(model="gemini-3.1-flash-lite"),
+        ]),
+        tts=tts.FallbackAdapter([
+            elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id),
+            cartesia.TTS(),
+        ]),
         vad=silero.VAD.load(),
         turn_detection=inference.TurnDetector(),
         preemptive_generation=True,
