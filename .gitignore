@@ -10,3 +10,4 @@ build/
 .pytest_cache/
 sessions/
 .DS_Store
+docs/

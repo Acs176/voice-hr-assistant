@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     deepgram_api_key: str
     eleven_api_key: str
 
-    llm_model: str = "gpt-4o-mini"
+    llm_model: str = "gpt-5.4-mini"
     stt_model: str = "nova-3"
     stt_language: str = "multi"
     tts_model: str = "eleven_multilingual_v2"

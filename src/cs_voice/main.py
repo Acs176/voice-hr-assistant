@@ -8,9 +8,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import AgentSession, RoomInputOptions
+from livekit.agents import AgentSession, RoomInputOptions, inference
 from livekit.plugins import deepgram, elevenlabs, openai, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from cs_voice.agent import SupportAgent
 from cs_voice.config import Settings, get_settings
@@ -30,7 +29,7 @@ def _build_session(settings: Settings) -> AgentSession[None]:
         llm=openai.LLM(model=settings.llm_model),
         tts=elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id),
         vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
+        turn_detection=inference.TurnDetector(),
         preemptive_generation=True,
     )
 

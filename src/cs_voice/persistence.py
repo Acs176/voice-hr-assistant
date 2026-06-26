@@ -11,16 +11,6 @@ from livekit.agents import AgentSession
 from cs_voice.state import SessionState
 
 
-def extract_transcript(session: AgentSession[Any]) -> list[dict[str, str]]:
-    out: list[dict[str, str]] = []
-    for item in session.history.items:
-        role = getattr(item, "role", None)
-        text = getattr(item, "text_content", None)
-        if role and text:
-            out.append({"role": role, "text": text})
-    return out
-
-
 def save_session(
     sessions_dir: Path,
     session_id: str,
@@ -35,7 +25,7 @@ def save_session(
                 "session_id": session_id,
                 "complete": state.is_complete(),
                 "state": state.model_dump(),
-                "transcript": extract_transcript(session),
+                "transcript": session.history.to_dict(),
             },
             indent=2,
         )
