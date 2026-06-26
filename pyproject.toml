@@ -41,6 +41,8 @@ ignore = ["E501"]
 testpaths = ["tests"]
 addopts = "-q"
 asyncio_mode = "auto"
+# pytest-asyncio 0.24 trips Python 3.14's event-loop-policy deprecation; not our code
+filterwarnings = ["ignore:'asyncio.[gs]et_event_loop_policy':DeprecationWarning"]
 
 [tool.mypy]
 files = ["src/cs_voice"]
