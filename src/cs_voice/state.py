@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 
 from cs_voice.parsing import spell_out
 
-IssueCategory = Literal["scheduling", "payroll", "onboarding", "documents", "other"]
+IssueCategory = Literal[
+    "payroll", "benefits", "time_off", "onboarding", "scheduling", "documents", "policy", "other"
+]
 Urgency = Literal["low", "medium", "high"]
 SlotStatus = Literal["empty", "candidate", "confirmed", "failed"]
 
