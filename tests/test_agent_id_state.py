@@ -15,9 +15,19 @@ class _FakeJobCtx:
         return None
 
 
+class _NullRetriever:
+    """Never matches — these tests don't exercise lookup."""
+
+    async def search(self, query: str, k: int = 3) -> list:
+        return []
+
+    async def best(self, query: str) -> None:
+        return None
+
+
 @pytest.fixture
 def agent() -> SupportAgent:
-    return SupportAgent(SessionState(), _FakeJobCtx())  # type: ignore[arg-type]
+    return SupportAgent(SessionState(), _FakeJobCtx(), _NullRetriever())  # type: ignore[arg-type]
 
 
 async def test_successful_parse_enters_candidate_state(agent: SupportAgent) -> None:

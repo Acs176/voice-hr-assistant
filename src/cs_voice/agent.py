@@ -5,6 +5,7 @@ from __future__ import annotations
 from livekit import agents
 from livekit.agents import Agent, ChatContext, ChatMessage, function_tool
 
+from cs_voice import rag
 from cs_voice.parsing import parse_employee_id, spell_out
 from cs_voice.prompts import load_prompt
 from cs_voice.state import IssueCategory, SessionState, Urgency
@@ -25,10 +26,13 @@ ACTION_ESCALATED = (
 
 
 class SupportAgent(Agent):
-    def __init__(self, state: SessionState, job_ctx: agents.JobContext) -> None:
+    def __init__(
+        self, state: SessionState, job_ctx: agents.JobContext, retriever: rag.Retriever
+    ) -> None:
         super().__init__(instructions=PERSONA)
         self.state = state
         self._job_ctx = job_ctx
+        self._retriever = retriever
 
     async def _sync_instructions(self) -> None:
         base = PERSONA + STATE_HEADER + self.state.snapshot()
@@ -41,6 +45,35 @@ class SupportAgent(Agent):
     async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
         self.state.turn_count += 1
         await self._sync_instructions()
+
+    @function_tool
+    async def lookup_hr_info(self, question: str) -> str:
+        """Look up an HR question in the Orbio knowledge base (pay, time off, benefits,
+        onboarding, company info).
+
+        Call this whenever the caller asks a general how/when/what question you could
+        answer from policy. Pass their question as they asked it.
+
+        On a hit, returns the relevant policy passage and its source — answer from that
+        and mention the source in passing. On a miss, the response tells you to say you
+        can't answer it directly and to route it as an issue instead.
+        """
+        try:
+            hit = await self._retriever.best(question)
+        except Exception:  # degrade gracefully; a lookup must never kill the turn
+            return (
+                "lookup failed. Tell the caller you couldn't pull that up just now, "
+                "and offer to route it to someone who can."
+            )
+        if hit is None:
+            return (
+                "no confident match in the knowledge base. Tell the caller you can't "
+                "answer that one directly and will route it to someone who can. You "
+                "already have most of what's needed: record the caller's question as the "
+                "description and the topic as the category, then ask only for what's "
+                "still missing (their employee ID, and anything else)."
+            )
+        return f"answer from '{hit.chunk.source}': {hit.chunk.text}"
 
     @function_tool
     async def record_employee_id(self, raw_phrase: str) -> str:

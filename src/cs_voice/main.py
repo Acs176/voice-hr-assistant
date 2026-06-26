@@ -11,6 +11,7 @@ from livekit import agents
 from livekit.agents import AgentSession, RoomInputOptions, inference
 from livekit.plugins import deepgram, elevenlabs, openai, silero
 
+from cs_voice import rag
 from cs_voice.agent import SupportAgent
 from cs_voice.config import Settings, get_settings
 from cs_voice.persistence import save_session
@@ -37,7 +38,8 @@ def _build_session(settings: Settings) -> AgentSession[None]:
 async def entrypoint(ctx: agents.JobContext) -> None:
     settings = get_settings()
     state = SessionState()
-    agent = SupportAgent(state, ctx)
+    retriever = await rag.load_retriever(api_key=settings.openai_api_key)
+    agent = SupportAgent(state, ctx, retriever)
     session_id = uuid.uuid4().hex[:8]
 
     session = _build_session(settings)

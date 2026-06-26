@@ -36,6 +36,16 @@ def test_chunking_offline() -> None:
     assert all(c.text.startswith(c.section) for c in chunks)
 
 
+def test_committed_index_is_fresh() -> None:
+    """Guard the footgun: editing the KB without rebuilding the index ships a stale
+    index that load_retriever would silently rebuild (network) at job startup."""
+    import json
+
+    data = json.loads(rag.INDEX_PATH.read_text())
+    want = rag._content_hash(rag.load_chunks(), rag.EMBED_MODEL)
+    assert data["hash"] == want, "KB changed — run `python -m cs_voice.rag` to rebuild the index"
+
+
 @needs_api
 @pytest.mark.parametrize("query,expected", CASES)
 async def test_top_hit_source(query: str, expected: str) -> None:
