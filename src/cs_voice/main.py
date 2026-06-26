@@ -58,7 +58,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         fut.add_done_callback(pending.discard)
 
     await session.start(agent=agent, room=ctx.room, room_input_options=RoomInputOptions())
-    await session.say("Hi, this is Mar from Orbio support. How can I help you today?")
+    await session.say("Hi! You've reached Mar in HR at Orbio. How can I help you today?")
 
 
 def main() -> None:
