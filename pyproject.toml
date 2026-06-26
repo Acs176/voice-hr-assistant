@@ -39,7 +39,10 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -m 'not eval'"  # behavioral evals are opt-in: `pytest -m eval`
+markers = [
+    "eval: LLM-driven behavioral evals; needs OPENAI_API_KEY, costs tokens (run with -m eval)",
+]
 asyncio_mode = "auto"
 # pytest-asyncio 0.24 trips Python 3.14's event-loop-policy deprecation; not our code
 filterwarnings = ["ignore:'asyncio.[gs]et_event_loop_policy':DeprecationWarning"]
