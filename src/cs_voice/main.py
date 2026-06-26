@@ -8,7 +8,14 @@ from typing import Any
 
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import AgentSession, RoomInputOptions, inference
+from livekit.agents import (
+    AgentSession,
+    AudioConfig,
+    BackgroundAudioPlayer,
+    BuiltinAudioClip,
+    RoomInputOptions,
+    inference,
+)
 from livekit.plugins import deepgram, elevenlabs, openai, silero
 
 from cs_voice import rag
@@ -60,6 +67,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         fut.add_done_callback(pending.discard)
 
     await session.start(agent=agent, room=ctx.room, room_input_options=RoomInputOptions())
+
+    background = BackgroundAudioPlayer(
+        thinking_sound=[
+            AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING, volume=0.6),
+            AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING2, volume=0.7),
+        ],
+        ambient_sound=AudioConfig(BuiltinAudioClip.OFFICE_AMBIENCE, volume=0.6),
+    )
+    await background.start(room=ctx.room, agent_session=session)
+
     await session.say("Hi! You've reached Mar in HR at Orbio. How can I help you today?")
 
 
