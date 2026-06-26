@@ -98,7 +98,28 @@ connect to your project, and talk to it.
 ## Develop
 
 ```bash
-make test     # pytest
+make test     # pytest (offline; behavioral evals are opt-in: `uv run pytest -m eval`)
 make lint     # ruff + mypy
 make format   # ruff format + autofix
 ```
+
+## Tracing (Langfuse, self-hosted)
+
+Optional. The agent emits OpenTelemetry spans (STT/LLM/TTS, tool calls, turns) which we
+ship to a locally self-hosted Langfuse. Disabled until you set the keys.
+
+```bash
+make langfuse                      # start the local Langfuse stack (UI at localhost:3000)
+```
+
+Then in the UI: create an account → a project → copy the public/secret keys into `.env`
+(`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`; `LANGFUSE_HOST` defaults to `localhost:3000`).
+Confirm the plumbing without placing a call:
+
+```bash
+uv run python -m cs_voice.tracing  # emits one test span → check the UI
+```
+
+After that, `make run` traces every call, grouped by session id. Leave the keys unset to
+disable. `docker-compose.langfuse.yml` is Langfuse's official self-host compose, vendored
+and pinned to their `:3` images.

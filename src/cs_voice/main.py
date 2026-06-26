@@ -26,6 +26,7 @@ from cs_voice.agent import SupportAgent
 from cs_voice.config import Settings, get_settings
 from cs_voice.persistence import save_session
 from cs_voice.state import SessionState
+from cs_voice.tracing import setup_langfuse
 
 load_dotenv()
 
@@ -70,10 +71,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     agent = SupportAgent(state, ctx, retriever)
     session_id = uuid.uuid4().hex[:8]
 
+    tracer_provider = setup_langfuse(settings, metadata={"langfuse.session.id": session_id})
+
     session = _build_session(settings)
 
     async def on_shutdown() -> None:
         save_session(settings.sessions_dir, session_id, state, session)
+        if tracer_provider is not None:
+            tracer_provider.force_flush()  # drain buffered spans before the worker exits
 
     ctx.add_shutdown_callback(on_shutdown)
 

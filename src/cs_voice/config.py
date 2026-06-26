@@ -31,6 +31,12 @@ class Settings(BaseSettings):
 
     sessions_dir: Path = Path("sessions")
 
+    # Langfuse tracing — optional. Leave the keys unset to disable (tracing becomes a no-op).
+    # Defaults target a locally self-hosted instance (see docker-compose.langfuse.yml).
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "http://localhost:3000"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
