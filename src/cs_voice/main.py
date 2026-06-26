@@ -31,6 +31,19 @@ load_dotenv()
 
 
 def _build_session(settings: Settings) -> AgentSession[None]:
+    # Fallback providers are only added when their key is set
+    llm_providers: list[llm.LLM[Any]] = [openai.LLM(model=settings.llm_model)]
+    if settings.google_api_key:
+        llm_providers.append(google.LLM(model="gemini-3.1-flash-lite"))
+
+    tts_providers: list[tts.TTS[Any]] = [
+        elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id)
+    ]
+    if settings.cartesia_api_key:
+        tts_providers.append(cartesia.TTS())
+
+    vad = silero.VAD.load()
+
     return AgentSession(
         stt=stt.FallbackAdapter([
             deepgram.STT(
@@ -38,17 +51,13 @@ def _build_session(settings: Settings) -> AgentSession[None]:
                 language=settings.stt_language,
                 numerals=True,
             ),
-            openai.STT(),  # Whisper fallback
+            # Whisper isn't streaming; FallbackAdapter needs every STT to stream, so
+            # VAD-segment it into a StreamAdapter.
+            stt.StreamAdapter(stt=openai.STT(), vad=vad),
         ]),
-        llm=llm.FallbackAdapter([
-            openai.LLM(model=settings.llm_model),
-            google.LLM(model="gemini-3.1-flash-lite"),
-        ]),
-        tts=tts.FallbackAdapter([
-            elevenlabs.TTS(model=settings.tts_model, voice_id=settings.tts_voice_id),
-            cartesia.TTS(),
-        ]),
-        vad=silero.VAD.load(),
+        llm=llm.FallbackAdapter(llm_providers),
+        tts=tts.FallbackAdapter(tts_providers),
+        vad=vad,
         turn_detection=inference.TurnDetector(),
         preemptive_generation=True,
     )
