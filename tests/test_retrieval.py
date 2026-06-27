@@ -49,7 +49,7 @@ def test_committed_index_is_fresh() -> None:
 @needs_api
 @pytest.mark.parametrize("query,expected", CASES)
 async def test_top_hit_source(query: str, expected: str) -> None:
-    retriever = await rag.load_retriever()
+    retriever = rag.load_retriever()
     hits = await retriever.search(query, k=3)
     assert hits[0].chunk.source == expected, f"{query!r} -> {[h.chunk.source for h in hits]}"
 
@@ -57,13 +57,13 @@ async def test_top_hit_source(query: str, expected: str) -> None:
 @needs_api
 async def test_threshold_rejects_offtopic() -> None:
     """An unrelated question should clear nothing — best() returns None → agent routes."""
-    retriever = await rag.load_retriever()
+    retriever = rag.load_retriever()
     assert await retriever.best("what's the weather on Mars") is None
 
 
 @needs_api
 async def test_threshold_accepts_ontopic() -> None:
     """A clear question must clear the bar — guards against THRESHOLD set too high."""
-    retriever = await rag.load_retriever()
+    retriever = rag.load_retriever()
     hit = await retriever.best("when do I get paid")
     assert hit is not None and hit.chunk.source == "payroll"

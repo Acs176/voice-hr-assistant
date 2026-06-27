@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from typing import Any
 
@@ -35,7 +36,7 @@ load_dotenv()
 log = logging.getLogger(__name__)
 
 
-def _build_session(settings: Settings) -> AgentSession[None]:
+def _build_session(settings: Settings, vad: silero.VAD) -> AgentSession[None]:
     # Fallback providers are only added when their key is set
     llm_providers: list[llm.LLM[Any]] = [openai.LLM(model=settings.llm_model)]
     if settings.google_api_key:
@@ -46,8 +47,6 @@ def _build_session(settings: Settings) -> AgentSession[None]:
     ]
     if settings.cartesia_api_key:
         tts_providers.append(cartesia.TTS())
-
-    vad = silero.VAD.load()
 
     return AgentSession(
         stt=stt.FallbackAdapter([
@@ -68,16 +67,31 @@ def _build_session(settings: Settings) -> AgentSession[None]:
     )
 
 
+def prewarm(proc: agents.JobProcess) -> None:
+    # Runs once per worker subprocess before any job lands. Heavy, reusable
+    # loads go here so they're off the call's critical path. Index is built
+    # at deploy time (`python -m cs_voice.rag`); load is sync + offline.
+    try:
+        t = time.perf_counter()
+        proc.userdata["vad"] = silero.VAD.load()
+        proc.userdata["retriever"] = rag.load_retriever(api_key=get_settings().openai_api_key)
+        log.info("prewarm done in %.2fs", time.perf_counter() - t)
+    except Exception:
+        log.exception("prewarm failed; worker will not accept jobs")
+        raise
+
+
 async def entrypoint(ctx: agents.JobContext) -> None:
     settings = get_settings()
     state = SessionState()
-    retriever = await rag.load_retriever(api_key=settings.openai_api_key)
+    retriever = ctx.proc.userdata["retriever"]
+    vad = ctx.proc.userdata["vad"]
     agent = SupportAgent(state, ctx, retriever)
     session_id = uuid.uuid4().hex[:8]
 
     tracer_provider = setup_langfuse(settings, metadata={"langfuse.session.id": session_id})
 
-    session = _build_session(settings)
+    session = _build_session(settings, vad)
 
     async def on_shutdown() -> None:
         # Caller is gone; bound the summary so a slow LLM can't eat the shutdown
@@ -125,7 +139,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
 
 def main() -> None:
-    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
 
 
 if __name__ == "__main__":

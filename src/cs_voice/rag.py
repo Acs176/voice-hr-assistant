@@ -144,17 +144,24 @@ class InMemoryEmbeddingRetriever:
         return hits[0] if hits and hits[0].score >= THRESHOLD else None
 
 
-async def load_retriever(
+def load_retriever(
     *, kb_dir: Path = KB_DIR, index_path: Path = INDEX_PATH,
     model: str = EMBED_MODEL, api_key: str | None = None,
 ) -> InMemoryEmbeddingRetriever:
-    """Load the cached index, rebuilding it if missing or stale (needs network)."""
-    chunks = load_chunks(kb_dir)
-    want = _content_hash(chunks, model)
-    data = json.loads(index_path.read_text()) if index_path.exists() else None
-    if data is None or data.get("hash") != want:
-        await build_index(kb_dir=kb_dir, index_path=index_path, model=model, api_key=api_key)
-        data = json.loads(index_path.read_text())
+    """Load the committed index. Sync + offline — no network at boot.
+    Raises if the index is missing or stale: rebuild it at deploy time with
+    `python -m cs_voice.rag` (needs network + OPENAI_API_KEY)."""
+    if not index_path.exists():
+        raise RuntimeError(
+            f"KB index not found at {index_path}. Build it with: python -m cs_voice.rag"
+        )
+    data = json.loads(index_path.read_text())
+    want = _content_hash(load_chunks(kb_dir), model)
+    if data.get("hash") != want:
+        raise RuntimeError(
+            f"KB index at {index_path} is stale (hash mismatch). "
+            "Rebuild with: python -m cs_voice.rag"
+        )
     chunks = [Chunk(**c) for c in data["chunks"]]
     vectors = np.array(data["vectors"], dtype=np.float32)
     return InMemoryEmbeddingRetriever(chunks, vectors, _client(api_key), data["model"])
