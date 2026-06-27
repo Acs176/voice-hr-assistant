@@ -75,6 +75,23 @@ uv run pytest tests/test_retrieval.py # offline chunking + Q->source eval
 - **Deterministic ID parsing** over asking the LLM to transcribe digits — voice
   gets digits wrong, so parse + read back + confirm.
 
+## Guardrails
+
+Three layers, each with one enforcement point:
+
+- **Input moderation** — every user turn runs through OpenAI's
+  `omni-moderation-latest` in `guardrails.py`. A flag sets `state.escalated = True`;
+  the persona's escalation branch then routes Mar to a polite handoff and `end_call`.
+  Fails open on API error so an outage never kills a live call.
+- **Scope / escalation** — out-of-scope topics (legal advice, medical diagnosis,
+  harassment investigation, anything naming another employee) are handled in the
+  persona via the existing `escalate(reason)` tool.
+- **Hallucination** — the RAG similarity threshold in `rag.py` returns `None`
+  below the cutoff, which the persona reads as "don't invent, route instead."
+
+Future improvements: prompt-injection / jailbreak detection, per-category moderation thresholds instead of the binary
+`flagged`, and policy-compliance evals on agent output.
+
 ## Setup
 
 ```bash

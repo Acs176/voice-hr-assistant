@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+from typing import Any
+
 from livekit import agents
 from livekit.agents import Agent, ChatContext, ChatMessage, function_tool
 
-from cs_voice import rag
+from cs_voice import guardrails, rag
 from cs_voice.parsing import parse_employee_id, spell_out
 from cs_voice.prompts import load_prompt
 from cs_voice.state import IssueCategory, SessionState, Urgency
@@ -33,6 +36,8 @@ class SupportAgent(Agent):
         self.state = state
         self._job_ctx = job_ctx
         self._retriever = retriever
+        # Hold refs to background moderation tasks so the loop doesn't GC them mid-flight.
+        self._bg_tasks: set[asyncio.Task[Any]] = set()
 
     async def _sync_instructions(self) -> None:
         base = PERSONA + STATE_HEADER + self.state.snapshot()
@@ -44,7 +49,19 @@ class SupportAgent(Agent):
 
     async def on_user_turn_completed(self, turn_ctx: ChatContext, new_message: ChatMessage) -> None:
         self.state.turn_count += 1
+        # Fire-and-forget moderation: a flagged turn pivots Mar to escalation on the
+        # NEXT turn rather than blocking this one on a ~150-500ms moderation round-trip.
+        task = asyncio.create_task(self._moderate(new_message.text_content or ""))
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
         await self._sync_instructions()
+
+    async def _moderate(self, text: str) -> None:
+        if await guardrails.is_flagged(text):
+            self.state.escalated = True
+            # Re-sync so if moderation lands before the LLM turn starts, the
+            # escalation branch takes effect immediately instead of next turn.
+            await self._sync_instructions()
 
     @function_tool
     async def lookup_hr_info(self, question: str) -> str:
@@ -52,7 +69,7 @@ class SupportAgent(Agent):
         onboarding, company info).
 
         Call this whenever the caller asks a general how/when/what question you could
-        answer from policy. Pass their question as they asked it.
+        answer from policy. Pass their question as they asked it. Only call when the user has made a clear question.
 
         On a hit, returns the relevant policy passage and its source — answer from that
         and mention the source in passing. On a miss, the response tells you to say you
