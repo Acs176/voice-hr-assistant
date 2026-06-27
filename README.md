@@ -209,6 +209,37 @@ make lint     # ruff + mypy
 make format   # ruff format + autofix
 ```
 
+## Evals
+
+Three layers, cheapest first.
+
+- **Unit** (`test_parsing.py`, `test_state.py`, `test_guardrails.py`,
+  `test_agent_*.py`) — pure logic, offline, run on every commit via `make test`.
+- **Retrieval** (`test_retrieval.py`) — chunking runs offline; the Q→source
+  eval embeds a labelled set of FAQ questions and checks each lands on the
+  expected KB doc, plus threshold accept/reject cases. Needs `OPENAI_API_KEY`;
+  skipped when unset.
+- **Behavioral** (`test_evals.py`, `-m eval`) — drives the real `SupportAgent`
+  through `AgentSession.run()` in text mode, asserting on `SessionState` and
+  tool calls (the deterministic backbone) plus LiveKit's `accuracy_judge` /
+  `safety_judge` / `task_completion_judge` as advisory signals. Covers: FAQ
+  grounding, full slot collection, abuse → escalation, FAQ-miss → route without
+  fabrication, ID readback/confirm, repeated bad ID → escalate. Costs tokens;
+  run pre-release, not per-commit.
+
+```bash
+make test                          # unit + offline retrieval
+uv run pytest -m eval              # behavioral (live LLM, slow)
+```
+
+Out of scope at the text layer: STT accuracy, ID-over-voice, latency, barge-in.
+
+Future improvements: a simulated-caller harness (Coval / Hamming) for the voice
+layer; broader Q→source coverage and a labelled threshold-tuning set; LLM-judge
+over the summarizer's `CallSummary` output to catch prompt drift; regression
+suite that replays past `sessions/*.json` transcripts; CI gating on the eval
+suite once it stabilizes.
+
 ## Observability
 
 Three layers, in order of how often you'll reach for them.
