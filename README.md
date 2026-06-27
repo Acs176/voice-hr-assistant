@@ -61,6 +61,23 @@ uv run python -m cs_voice.rag        # (re)build the cached index
 uv run pytest tests/test_retrieval.py # offline chunking + Q->source eval
 ```
 
+### Summary & persistence
+
+When the call ends, `summarizer.py` sends the user/assistant turns plus the
+final `SessionState` snapshot to the LLM and parses a Pydantic `CallSummary`
+(headline, key points, next action, sentiment, resolved). `persistence.py`
+writes one JSON file per call to `sessions/` with the state, transcript, and
+summary. The summary call is bounded by a 10s timeout so a slow LLM can't
+eat the shutdown drain window.
+
+The state snapshot is treated as ground truth in the prompt; the transcript
+is for color and tone. Tool calls are filtered out before sending — they're
+noise for a human reader.
+
+Future improvements: pin summary output to a consistent ops language and persist the detected call language,
+retry or degrade to a state-only fallback on LLM failure / timeout instead of dropping the summary,
+an LLM-judge eval over canned transcripts to catch prompt drift, and a schema version on persisted JSON.
+
 ## Design decisions
 
 - **Answer + route, not just intake.** Most HR calls are FAQs; answering them on

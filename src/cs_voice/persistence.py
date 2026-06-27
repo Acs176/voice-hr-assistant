@@ -9,6 +9,7 @@ from typing import Any
 from livekit.agents import AgentSession
 
 from cs_voice.state import SessionState
+from cs_voice.summarizer import CallSummary
 
 
 def save_session(
@@ -16,6 +17,7 @@ def save_session(
     session_id: str,
     state: SessionState,
     session: AgentSession[Any],
+    summary: CallSummary | None = None,
 ) -> Path:
     sessions_dir.mkdir(parents=True, exist_ok=True)
     path = sessions_dir / f"{session_id}.json"
@@ -25,6 +27,7 @@ def save_session(
                 "session_id": session_id,
                 "complete": state.is_complete(),
                 "state": state.model_dump(),
+                "summary": summary.model_dump() if summary else None,
                 "transcript": session.history.to_dict(),
             },
             indent=2,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from typing import Any
 
@@ -26,9 +27,12 @@ from cs_voice.agent import SupportAgent
 from cs_voice.config import Settings, get_settings
 from cs_voice.persistence import save_session
 from cs_voice.state import SessionState
+from cs_voice.summarizer import summarize
 from cs_voice.tracing import setup_langfuse
 
 load_dotenv()
+
+log = logging.getLogger(__name__)
 
 
 def _build_session(settings: Settings) -> AgentSession[None]:
@@ -76,7 +80,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     session = _build_session(settings)
 
     async def on_shutdown() -> None:
-        save_session(settings.sessions_dir, session_id, state, session)
+        # Caller is gone; bound the summary so a slow LLM can't eat the shutdown
+        # drain window and skip save_session entirely.
+        summary = None
+        try:
+            summary = await asyncio.wait_for(
+                summarize(
+                    session.history.to_dict().get("items", []),
+                    state.snapshot(),
+                    settings.llm_model,
+                ),
+                timeout=10.0,
+            )
+        except Exception as e:
+            log.warning("summary skipped: %s", e)
+        save_session(settings.sessions_dir, session_id, state, session, summary)
         if tracer_provider is not None:
             tracer_provider.force_flush()  # drain buffered spans before the worker exits
 
